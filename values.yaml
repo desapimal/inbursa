@@ -1,0 +1,120 @@
+# Copyright (c) 2020, 2023, Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
+name: verrazzano
+
+global:
+  imagePullSecrets: []
+
+image:
+  pullPolicy: IfNotPresent
+  terminationGracePeriodSeconds: 60
+
+appBinding:
+  useSystemVMI: true
+
+elasticSearch:
+  enabled: true
+  multiNodeCluster: true
+
+prometheus:
+  enabled: true
+  requests:
+    memory: 128Mi
+    storage: 50Gi
+  namespace: verrazzano-monitoring
+  serviceAccount: prometheus-operator-kube-p-prometheus
+
+grafana:
+  enabled: true
+  requests:
+    memory: 48Mi
+    storage: 50Gi
+
+kibana:
+  enabled: true
+  requests:
+    memory: 192Mi
+
+kiali:
+  name: vmi-system-kiali
+
+monitoringOperator:
+  name: verrazzano-monitoring-operator
+
+logging:
+  name: fluentd
+  fluentBitSA: fluent-bit
+
+keycloak:
+  enabled: true
+
+rancher:
+  enabled: true
+
+console:
+  enabled: true
+  name: verrazzano-console
+  # NOTE: The console image now comes from the bill of materials file (verrazzano-bom.json).
+
+# NOTE: Eventually this api section should not be required by the Verrazzano component.
+# Removing them may involve moving some helm templates out of this component (e.g. authorizationpolicy)
+# and there may be upgrade issues to resolve (e.g. making sure the AuthorizationPolicy objects remain in effect).
+api:
+  name: verrazzano-authproxy
+  port: 8775
+  grpcPort: 8776
+
+config:
+  envName:
+  dnsSuffix:
+  enableMonitoringStorage: true
+
+security:
+  adminsGroup: &default_adminsGroup verrazzano-admins
+  monitorsGroup: &default_monitorsGroup verrazzano-monitors
+  usersGroup: &default_usersGroup verrazzano-users
+  systemGroup: &default_systemGroup verrazzano-system-users
+  projectAdminsGroup: &default_projectAdminsGroup verrazzano-project-admins
+  projectMonitorsGroup: &default_projectMonitorsGroup verrazzano-project-monitors
+  adminSubjects:
+    "subject-0":
+      kind: Group
+      name: *default_adminsGroup
+  monitorSubjects:
+    "subject-0":
+      kind: Group
+      name: *default_monitorsGroup
+
+kubernetes:
+  service:
+    endpoint:
+      ip:
+      port:
+
+externaldns:
+  enabled: false
+
+istio:
+  enabled: true
+
+jaegerOperator:
+  enabled: true
+  namespace: verrazzano-monitoring
+  jaegerServiceAccount: jaeger-operator-jaeger
+
+ingressNGINX:
+  namespace: verrazzano-ingress-nginx
+
+platformOperator:
+  namespace: verrazzano-install
+
+fluentd:
+  enabled: true
+fluentOperator:
+  enabled: true
+fluentbitOpensearchOutput:
+  enabled: true
+
+peerAuthentication:
+  mode: PERMISSIVE
+  
