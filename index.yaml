@@ -1,0 +1,13 @@
+apiVersion: v1
+entries:
+  verrazzano:
+  - apiVersion: v1
+    appVersion: 1.6.9
+    created: "2024-11-13T04:30:48.398654972Z"
+    description: A Helm chart for Verrazzano
+    digest: 81117988893a880f19a34fd540bdc4b6529b436638a45dd363719f979c29dd35
+    name: verrazzano
+    urls:
+    - https://github.com/desapimal/inbursa/releases/verrazzano-1.6.9.tgz
+    version: 1.6.9
+generated: "2024-11-13T04:30:48.398161287Z"
