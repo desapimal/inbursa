@@ -1,0 +1,74 @@
+# Copyright (c) 2023, Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
+name: verrazzano-network-policies
+namespace: verrazzano-system
+
+elasticSearch:
+  enabled: true
+  multiNodeCluster: true
+
+prometheus:
+  enabled: true
+
+grafana:
+  enabled: true
+
+certManager:
+  enabled: true
+
+ingressNGINX:
+  enabled: true
+  namespace: "verrazzano-ingress-nginx"
+
+istio:
+  enabled: true
+
+keycloak:
+  enabled: true
+
+rancher:
+  enabled: true
+
+externaldns:
+  enabled: false
+  namespace: verrazzano-system
+
+jaegerOperator:
+  enabled: false
+  namespace: verrazzano-monitoring
+
+weblogicOperator:
+  enabled: true
+
+coherenceOperator:
+  enabled: true
+
+authproxy:
+  enabled: true
+
+applicationOperator:
+  enabled: true
+
+oam:
+  enabled: true
+
+clusterOperator:
+  enabled: true
+
+console:
+  enabled: true
+
+velero:
+  enabled: false
+
+argocd:
+  enabled: false
+
+capi:
+  enabled: false
+
+fluentOperator:
+  enabled: false
+
+clusterAPI:
+  enabled: false
