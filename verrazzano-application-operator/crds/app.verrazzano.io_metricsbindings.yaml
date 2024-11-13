@@ -1,0 +1,121 @@
+# Copyright (c) 2022, Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.2
+  creationTimestamp: null
+  name: metricsbindings.app.verrazzano.io
+spec:
+  group: app.verrazzano.io
+  names:
+    kind: MetricsBinding
+    listKind: MetricsBindingList
+    plural: metricsbindings
+    singular: metricsbinding
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: MetricsBinding specifies the metrics binding API.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: MetricsBindingSpec specifies the desired state of a metrics
+              binding.
+            properties:
+              metricsTemplate:
+                description: Identifies a namespace and name for a metricsTemplate
+                  resource.
+                properties:
+                  name:
+                    description: Name of the resource.
+                    type: string
+                  namespace:
+                    description: Namespace of the resource.
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
+              prometheusConfigMap:
+                description: Identifies a namespace and name for a Prometheus ConfigMap
+                  resource.
+                properties:
+                  name:
+                    description: Name of the resource.
+                    type: string
+                  namespace:
+                    description: Namespace of the resource.
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
+              prometheusConfigSecret:
+                description: Identifies a namespace, name, and key for a secret containing
+                  the Prometheus configuration.
+                properties:
+                  key:
+                    description: Key in the secret whose value this object represents.
+                    type: string
+                  name:
+                    description: Name of the secret.
+                    type: string
+                  namespace:
+                    description: Namespace of the secret.
+                    type: string
+                required:
+                - key
+                - name
+                - namespace
+                type: object
+              workload:
+                description: Identifies the name and type for a workload.
+                properties:
+                  name:
+                    description: Name of the resource.
+                    type: string
+                  typeMeta:
+                    description: TypeMeta of the resource.
+                    properties:
+                      apiVersion:
+                        description: 'APIVersion defines the versioned schema of this
+                          representation of an object. Servers should convert recognized
+                          schemas to the latest internal value, and may reject unrecognized
+                          values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+                        type: string
+                      kind:
+                        description: 'Kind is a string value representing the REST
+                          resource this object represents. Servers may infer this
+                          from the endpoint the client submits requests to. Cannot
+                          be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                        type: string
+                    type: object
+                required:
+                - name
+                - typeMeta
+                type: object
+            required:
+            - metricsTemplate
+            - workload
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true

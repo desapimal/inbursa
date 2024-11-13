@@ -1,0 +1,254 @@
+# Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.2
+  creationTimestamp: null
+  name: ingresstraits.oam.verrazzano.io
+spec:
+  group: oam.verrazzano.io
+  names:
+    kind: IngressTrait
+    listKind: IngressTraitList
+    plural: ingresstraits
+    singular: ingresstrait
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: IngressTrait specifies the ingress traits API.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: IngressTraitSpec specifies the desired state of an ingress
+              trait.
+            properties:
+              rules:
+                description: A list of ingress rules for an ingress trait.
+                items:
+                  description: IngressRule specifies a rule for an ingress trait.
+                  properties:
+                    destination:
+                      description: The destination host and port for the ingress paths.
+                      properties:
+                        host:
+                          description: Destination host.
+                          type: string
+                        httpCookie:
+                          description: Session affinity cookie.
+                          properties:
+                            name:
+                              description: The name of the HTTP cookie.
+                              type: string
+                            path:
+                              description: The path of the HTTP cookie.
+                              type: string
+                            ttl:
+                              description: The lifetime of the HTTP cookie (in seconds).
+                              format: int64
+                              type: integer
+                          type: object
+                        port:
+                          description: Destination port.
+                          format: int32
+                          type: integer
+                      type: object
+                    hosts:
+                      description: One or more hosts exposed by the ingress trait.
+                        Wildcard hosts or hosts that are empty are filtered out. If
+                        there are no valid hosts provided, then a DNS host name is
+                        automatically generated and used.
+                      items:
+                        type: string
+                      type: array
+                    paths:
+                      description: The paths to be exposed for an ingress trait.
+                      items:
+                        description: IngressPath specifies a specific path to be exposed
+                          for an ingress trait.
+                        properties:
+                          authorizationPolicy:
+                            description: Defines the set of rules for authorizing
+                              a request.
+                            properties:
+                              rules:
+                                description: Rules are used to match requests from
+                                  request principals to specific paths given an optional
+                                  list of conditions.
+                                items:
+                                  description: AuthorizationRule matches requests
+                                    from a list of request principals that access
+                                    a specific path subject to a list of conditions.
+                                  properties:
+                                    from:
+                                      description: Specifies the request principals
+                                        for access to a request. An asterisk (*) will
+                                        match when the value is not empty, for example,
+                                        if any request principal is found in the request.
+                                      properties:
+                                        requestPrincipals:
+                                          description: Specifies the request principals
+                                            for access to a request.
+                                          items:
+                                            type: string
+                                          type: array
+                                      type: object
+                                    when:
+                                      description: Specifies a list of additional
+                                        conditions for access to a request.
+                                      items:
+                                        description: AuthorizationRuleCondition provides
+                                          additional required attributes for authorization.
+                                        properties:
+                                          key:
+                                            description: The name of a request attribute.
+                                            type: string
+                                          values:
+                                            description: A list of allowed values
+                                              for the attribute.
+                                            items:
+                                              type: string
+                                            type: array
+                                        type: object
+                                      type: array
+                                  type: object
+                                type: array
+                            type: object
+                          path:
+                            description: If no path is provided, then it defaults
+                              to forward slash (`/`).
+                            type: string
+                          pathType:
+                            description: 'Path type values are case-sensitive and
+                              formatted as follows: <ul><li>`exact`: exact string
+                              match</li><li>`prefix`: prefix-based match</li><li>`regex`:
+                              regex-based match</li></ul> Defaults to `prefix` if
+                              `path` specified is `/`; otherwise, defaults to `exact`.'
+                            type: string
+                        type: object
+                      type: array
+                  type: object
+                type: array
+              tls:
+                description: The security parameters for an ingress trait. This is
+                  required only if specific hosts are given in an [IngressRule](#oam.verrazzano.io/v1alpha1.IngressRule).
+                properties:
+                  secretName:
+                    description: The name of a secret containing the certificate securing
+                      the transport.  The specification of a secret here implies that
+                      a certificate was created for specific hosts, as specified in
+                      an [IngressRule](#oam.verrazzano.io/v1alpha1.IngressRule).
+                    type: string
+                type: object
+              workloadRef:
+                description: The WorkloadReference of the workload to which this trait
+                  applies. This value is populated by the OAM runtime when an ApplicationConfiguration
+                  resource is processed.  When the ApplicationConfiguration is processed,
+                  a trait and a workload resource are created from the content of
+                  the ApplicationConfiguration. The WorkloadReference is provided
+                  in the trait by OAM to ensure that the trait controller can find
+                  the workload associated with the component containing the trait
+                  within the original ApplicationConfiguration.
+                properties:
+                  apiVersion:
+                    description: APIVersion of the referenced object.
+                    type: string
+                  kind:
+                    description: Kind of the referenced object.
+                    type: string
+                  name:
+                    description: Name of the referenced object.
+                    type: string
+                  uid:
+                    description: UID of the referenced object.
+                    type: string
+                required:
+                - apiVersion
+                - kind
+                - name
+                type: object
+            required:
+            - workloadRef
+            type: object
+          status:
+            description: The observed state of an ingress trait and related resources.
+            properties:
+              conditions:
+                description: Conditions of the resource.
+                items:
+                  description: A Condition that may apply to a resource.
+                  properties:
+                    lastTransitionTime:
+                      description: LastTransitionTime is the last time this condition
+                        transitioned from one status to another.
+                      format: date-time
+                      type: string
+                    message:
+                      description: A Message containing details about this condition's
+                        last transition from one status to another, if any.
+                      type: string
+                    reason:
+                      description: A Reason for this condition's last transition from
+                        one status to another.
+                      type: string
+                    status:
+                      description: Status of this condition; is it currently True,
+                        False, or Unknown?
+                      type: string
+                    type:
+                      description: Type of this condition. At most one of each condition
+                        type may apply to a resource at any point in time.
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              resources:
+                description: The resources managed by this ingress trait.
+                items:
+                  description: A TypedReference refers to an object by Name, Kind,
+                    and APIVersion. It is commonly used to reference cluster-scoped
+                    objects or objects where the namespace is already known.
+                  properties:
+                    apiVersion:
+                      description: APIVersion of the referenced object.
+                      type: string
+                    kind:
+                      description: Kind of the referenced object.
+                      type: string
+                    name:
+                      description: Name of the referenced object.
+                      type: string
+                    uid:
+                      description: UID of the referenced object.
+                      type: string
+                  required:
+                  - apiVersion
+                  - kind
+                  - name
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

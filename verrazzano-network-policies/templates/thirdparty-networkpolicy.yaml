@@ -1,0 +1,893 @@
+# Copyright (c) 2021, 2023, Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
+{{- if .Values.weblogicOperator.enabled }}
+---
+# Network policy for WebLogic operator
+# Ingress: allow from istio-system
+#          allow connect from Prometheus to scrape Envoy stats on port 15090
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: weblogic-operator
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: weblogic-operator
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            verrazzano.io/namespace: istio-system
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 15090
+          protocol: TCP
+{{- end }}
+{{- if .Values.coherenceOperator.enabled }}
+---
+# Network policy for Coherence Operator
+# Ingress: allow connect from Kubernetes API server to validating webhook port 9443
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: coherence-operator
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: coherence
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 9443
+          protocol: TCP
+        - port: 8000
+          protocol: TCP
+{{- end }}
+{{- if .Values.grafana.enabled}}
+---
+# Network policy for VMI System Grafana
+# Ingress: allow connect from the ingress controller to oidc port 8775
+#          allow connect from Prometheus to scrape Envoy stats on port 15090
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vmi-system-grafana
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: system-grafana
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-system
+          podSelector:
+            matchLabels:
+              app: verrazzano-authproxy
+      ports:
+        - port: 3000
+          protocol: TCP
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 15090
+          protocol: TCP
+{{- end }}
+{{- if .Values.certManager.enabled }}
+---
+# Network policy for Cert Manager
+# Ingress: allow connect from Prometheus for scraping metrics
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+spec:
+  podSelector:
+    matchLabels:
+      app: cert-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    # Port for scraping Prometheus metrics
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 9402
+          protocol: TCP
+{{- end }}
+{{- if .Values.externaldns.enabled }}
+---
+# Network policy for External DNS
+# Ingress: deny all
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: external-dns
+  namespace: {{ .Values.externaldns.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: external-dns
+  policyTypes:
+    - Ingress
+{{- end }}
+{{- if .Values.keycloak.enabled }}
+---
+# Allow any pod in the keycloak namespace to have network ingress to any other pod
+# in the keycloak namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: keycloak
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+---
+# Network policy for Keycloak
+# Ingress: allow nginx ingress and ingress from pods in the verrazzano-system namespace
+#          allow connect from Prometheus to scrape Envoy stats on port 15090
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            verrazzano.io/namespace: {{ .Values.ingressNGINX.namespace }}
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/instance: ingress-controller
+      ports:
+        - protocol: TCP
+          port: 8080
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            verrazzano.io/namespace: {{ .Release.Namespace }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: keycloak
+      ports:
+        - protocol: TCP
+          port: 7800
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            verrazzano.io/namespace: verrazzano-monitoring
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: prometheus
+      ports:
+        - port: 15090
+          protocol: TCP
+---
+# Network policy for Keycloak MySQL
+# Ingress: allow port 3306 from Keycloak pods
+#          allow connect from Prometheus to scrape Envoy stats on port 15090
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: keycloak-mysql
+  namespace: keycloak
+spec:
+  podSelector:
+    matchLabels:
+      tier: mysql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: keycloak
+      ports:
+        - protocol: TCP
+          port: 3306
+        - protocol: TCP
+          port: 33060
+        - protocol: TCP
+          port: 6446
+        - protocol: TCP
+          port: 6447
+        - protocol: TCP
+          port: 6448
+        - protocol: TCP
+          port: 6449
+        - protocol: TCP
+          port: 7800
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            verrazzano.io/namespace: mysql-operator
+      ports:
+        - protocol: TCP
+          port: 3306
+        - protocol: TCP
+          port: 33060
+        - protocol: TCP
+          port: 33061
+    - from:
+      - podSelector:
+          matchLabels:
+            job-name: load-dump
+      ports:
+        - protocol: TCP
+          port: 3306
+        - protocol: TCP
+          port: 33060
+        - protocol: TCP
+          port: 6446
+        - protocol: TCP
+          port: 6447
+        - protocol: TCP
+          port: 6448
+        - protocol: TCP
+          port: 6449
+    - from:
+      - podSelector:
+          matchLabels:
+            component: mysqlrouter
+      ports:
+        - protocol: TCP
+          port: 3306
+        - protocol: TCP
+          port: 33060
+        - protocol: TCP
+          port: 33061
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            verrazzano.io/namespace: verrazzano-monitoring
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: prometheus
+      ports:
+        - port: 15090
+          protocol: TCP
+
+{{- end }}
+---
+# Network policy for Rancher cluster agent
+# - always create this policy in case the target cluster is intended to be a managed cluster
+# Ingress: deny all
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cattle-cluster-agent
+  namespace: cattle-system
+spec:
+  podSelector:
+    matchLabels:
+      app: cattle-cluster-agent
+  policyTypes:
+    - Ingress
+{{- if .Values.rancher.enabled }}
+---
+# Network policy for Rancher UI/API
+# Ingress: allow nginx ingress
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rancher
+  namespace: cattle-system
+spec:
+  podSelector:
+    matchLabels:
+      app: rancher
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            verrazzano.io/namespace: cattle-system
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: cattle-fleet-system
+      - podSelector:
+          matchLabels:
+            app: fleet-controller
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            verrazzano.io/namespace: {{ .Values.ingressNGINX.namespace }}
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/instance: ingress-controller
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 444
+---
+# Network policy for Rancher webhook
+# Ingress: allow access from Kubernetes API server for webhook port 9443
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rancher-webhook
+  namespace: cattle-system
+spec:
+  podSelector:
+    matchLabels:
+      app: rancher-webhook
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 9443
+          protocol: TCP
+{{- end }}
+{{- if .Values.argocd.enabled}}
+---
+# Network policy for Argo CD UI/API
+# Ingress: allow nginx ingress
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: argocd
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: {{ .Values.ingressNGINX.namespace }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: ingress-controller
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 8080
+{{- end }}
+{{- if .Values.ingressNGINX.enabled }}
+---
+# Network policy for NGINX Ingress controller
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-nginx-controller
+  namespace: {{ .Values.ingressNGINX.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: controller
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow ingress to port 443 from anywhere
+    - ports:
+        - port: 443
+          protocol: TCP
+    # Allow ingress to port 80 from verrazzano-system
+    - ports:
+        - port: 80
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-system
+    # Allow ingress to port 10254 from Prometheus to scrape metrics
+    # Allow ingress to port 15090 from Prometheus to scrape Envoy stats
+    - ports:
+        - port: 10254
+          protocol: TCP
+        - port: 15090
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+---
+# Network policy for NGINX Ingress default-backend
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-nginx-default-backend
+  namespace: {{ .Values.ingressNGINX.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: default-backend
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow ingress from ingress-nginx controller
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: controller
+      ports:
+        - port: 8080
+          protocol: TCP
+    - ports:
+        - port: 15090
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+{{- end }}
+{{- if .Values.istio.enabled}}
+---
+# Network policy for istio-system pod communication
+# Ingress: allow all pod-to-pod communication within the namespace
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: istio-system
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+---
+# Network policy for Istio ingress gateway
+# Ingress: allow ingress to port 8443 from anywhere
+#          allow ingress to port 15090 from Prometheus to scrape Envoy stats
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-ingressgateway
+  namespace: istio-system
+spec:
+  podSelector:
+    matchLabels:
+      app: istio-ingressgateway
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 8443
+          protocol: TCP
+    - ports:
+        - port: 15090
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+---
+# Network policy for Istio egress gateway
+# Ingress: allow ingress to port 8443 from anywhere
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-egressgateway
+  namespace: istio-system
+spec:
+  podSelector:
+    matchLabels:
+      app: istio-egressgateway
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 8443
+          protocol: TCP
+    - ports:
+        - port: 15090
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+---
+# Network policy for Istio coredns
+# Ingress: allow ingress to port 53 from kube-system DNS
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istiocoredns
+  namespace: istio-system
+spec:
+  podSelector:
+    matchLabels:
+      app: istiocoredns
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+---
+# Network policy for Istiod
+# Ingress: allow ingress to port 15012 from verrazzano-system prometheus and keycloak (for Istio proxy sidecar)
+#          allow ingress to port 15012 for application namespaces
+#          allow port 15017 for webhooks
+#          allow port 15014 from Prometheus to scrape metrics
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istiod-access
+  namespace: istio-system
+spec:
+  podSelector:
+    matchLabels:
+      app: istiod
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 15012
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano-managed: "true"
+              istio-injection: enabled
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              k8s-app: verrazzano-monitoring-operator
+    - ports:
+        - port: 15012
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano-managed: "true"
+              istio-injection: enabled
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: {{ .Release.Namespace }}
+          podSelector:
+            matchExpressions:
+              - {key: app, operator: In, values: [fluentd, verrazzano-authproxy, verrazzano-console, system-es-master, system-es-ingest, system-es-data, system-grafana, system-osd, weblogic-operator, kiali]}
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: {{ .Release.Namespace }}
+          podSelector:
+            matchExpressions:
+              - {key: "app.kubernetes.io/name", operator: In, values: [fluent-operator, fluent-bit]}
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: keycloak
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: keycloak
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: keycloak
+          podSelector:
+            matchLabels:
+              tier: mysql
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: keycloak
+          podSelector:
+            matchLabels:
+              job-name: load-dump
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: mysql-operator
+          podSelector:
+            matchLabels:
+              name: mysql-operator
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: {{ .Values.ingressNGINX.namespace }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app: jaeger
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - query
+              - query-frontend
+              - storegateway
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: mysql-operator
+          podSelector:
+            matchLabels:
+              name: mysql-operator
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: argocd
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: argocd
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-backup
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: velero
+              app.kubernetes.io/name: velero
+    - ports:
+        - port: 15017
+          protocol: TCP
+    - ports:
+        - port: 15014
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+---
+# Network policy for Kiali
+# Ingress: allow connect from istio-system
+#          allow connect from the ingress controller to port 20001
+#          allow connect from prometheus to port 9090 and the envoy metrics port 15090
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kiali
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: kiali
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-system
+          podSelector:
+            matchLabels:
+              app: verrazzano-authproxy
+      ports:
+        - port: 20001
+          protocol: TCP
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 9090
+          protocol: TCP
+        - port: 15090
+          protocol: TCP
+{{- end }}
+---
+{{- if .Values.velero.enabled }}
+---
+# Allow any pod in the verrazzano-backup namespace to have network ingress to any other pod
+# in the verrazzano-backup namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: verrazzano-backup
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+---
+# Network policy for verrazzano-backup
+# Ingress: allow connect from Prometheus to scrape Envoy stats on port 15090
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: velero
+  namespace: verrazzano-backup
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: velero
+      app.kubernetes.io/name: velero
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              verrazzano.io/namespace: verrazzano-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 15090
+          protocol: TCP
+{{- end }}
+{{- if .Values.clusterAPI.enabled }}
+---
+# Network policy for capi-controller-manager
+# Ingress: allow connection from Kubernetes API server to port 9443
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: capi-controller-manager
+  namespace: verrazzano-capi
+spec:
+  podSelector:
+    matchLabels:
+      cluster.x-k8s.io/provider: cluster-api
+      control-plane: controller-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+      - port: 9443
+        protocol: TCP
+---
+# Network policy for capi-ocne-bootstrap-controller-manager
+# Ingress: allow connection from Kubernetes API server to port 9443
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: capi-ocne-bootstrap-controller-manager
+  namespace: verrazzano-capi
+spec:
+  podSelector:
+    matchLabels:
+      cluster.x-k8s.io/provider: bootstrap-ocne
+      control-plane: controller-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 9443
+          protocol: TCP
+---
+# Network policy for capi-ocne-control-plane-controller-manager
+# Ingress: allow connection from Kubernetes API server to port 9443
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: capi-ocne-control-plane-controller-manager
+  namespace: verrazzano-capi
+spec:
+  podSelector:
+    matchLabels:
+      cluster.x-k8s.io/provider: control-plane-ocne
+      control-plane: controller-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 9443
+          protocol: TCP
+---
+# Network policy for capoci-controller-manager
+# Ingress: allow connection from Kubernetes API server to port 9443
+# Egress: allow all
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: capoci-controller-manager
+  namespace: verrazzano-capi
+spec:
+  podSelector:
+    matchLabels:
+      cluster.x-k8s.io/provider: infrastructure-oci
+      control-plane: controller-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 9443
+          protocol: TCP
+{{- end }}

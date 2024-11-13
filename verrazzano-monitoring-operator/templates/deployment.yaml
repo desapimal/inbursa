@@ -1,0 +1,99 @@
+# Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.monitoringOperator.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    k8s-app: {{ .Values.monitoringOperator.name }}
+    app: {{ .Values.monitoringOperator.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: {{ .Values.monitoringOperator.name }}
+  template:
+    metadata:
+      annotations:
+        traffic.sidecar.istio.io/excludeOutboundPorts: "443"
+      labels:
+        k8s-app: {{ .Values.monitoringOperator.name }}
+        app: {{ .Values.monitoringOperator.name }}
+    spec:
+      containers:
+        - name: {{ .Values.monitoringOperator.name }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: {{ .Values.monitoringOperator.imageName }}:{{ .Values.monitoringOperator.imageVersion }}
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+            - containerPort: {{ .Values.monitoringOperator.metricsPort }}
+              name: http-metrics
+              protocol: TCP
+            - containerPort: {{ .Values.monitoringOperator.exporterPort }}
+              name: http-prom
+              protocol: TCP
+          resources:
+            requests:
+              memory: {{ .Values.monitoringOperator.RequestMemory }}
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
+          env:
+            - name: ISTIO_PROXY_IMAGE
+              value: {{ .Values.monitoringOperator.istioProxyImage }}
+            - name: GRAFANA_IMAGE
+              value: {{ .Values.monitoringOperator.grafanaImage }}
+            - name: K8S_SIDECAR_IMAGE
+              value: {{ .Values.monitoringOperator.k8sSidecarImage }}
+            - name: ALERT_MANAGER_IMAGE
+              value: {{ .Values.monitoringOperator.alertManagerImage }}
+            - name: OPENSEARCH_IMAGE
+              value: {{ .Values.monitoringOperator.osImage }}
+            - name: OPENSEARCH_INIT_IMAGE
+              value: {{ .Values.monitoringOperator.osInitImage }}
+            - name: OPENSEARCH_DASHBOARDS_IMAGE
+              value: {{ .Values.monitoringOperator.osdImage }}
+            - name: OPENSEARCH_WAIT_TARGET_VERSION
+              value: {{ .Values.monitoringOperator.osWaitTargetVersion }}
+            - name: OIDC_PROXY_IMAGE
+              value: {{ .Values.monitoringOperator.oidcProxyImage }}
+            - name: OIDC_AUTH_ENABLED
+              value: {{ .Values.monitoringOperator.oidcAuthEnabled | quote }}
+            - name: AUTH_PROXY_SERVICE_NAME
+              value: {{ .Values.api.name }}
+            - name: AUTH_PROXY_SERVICE_PORT
+              value: {{ .Values.api.port | quote }}
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /health
+              port: 8080
+              scheme: HTTPS
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          args:
+            - --zap-log-level=info
+            - --zap-devel=false
+            - --namespace={{ .Release.Namespace }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      serviceAccountName: {{ .Values.monitoringOperator.name }}
+      volumes:
+        - name: cert-volume
+          emptyDir: {}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 999
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
